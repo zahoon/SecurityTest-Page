@@ -13,7 +13,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     try {
         // --- CHECK 1: IS IT AN ADMIN? ---
-        $stmt = $pdo->prepare("SELECT * FROM admins WHERE email = ?");
+        $stmt = $pdo->prepare("SELECT * FROM admin WHERE email = ?");
         $stmt->execute([$email]);
         $admin = $stmt->fetch();
 
