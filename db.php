@@ -1,7 +1,7 @@
 <?php
 // Database connection settings
 $host = 'localhost';
-$dbname = 'compsecurity'; // The database name you created
+$dbname = 'compsecurity';
 $username = 'root';
 $password = '';
 

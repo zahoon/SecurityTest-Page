@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
 
     <style>
-        /* 1. Gradient Background Animation */
+        /* GRADIENT BACKGROUND ANIMATION */
         @keyframes gradient-animation {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -20,7 +20,7 @@
             animation: gradient-animation 10s ease infinite;
         }
 
-        /* 2. Floating Card Animation */
+        /* FLOATING FORM ANIMATION */
         @keyframes float {
             0% {
                 transform: translateY(0px);

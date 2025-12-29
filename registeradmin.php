@@ -2,8 +2,7 @@
 session_start();
 require 'db.php';
 
-// --- SECURITY CHECK ---
-// If user is NOT logged in OR is NOT an admin, redirect them.
+// SECURITY CHECK IF IT IS NOT ADMIN
 if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
     header("Location: login.php");
     exit;
@@ -11,7 +10,7 @@ if (!isset($_SESSION['user_id']) || $_SESSION['role'] !== 'admin') {
 
 $admin_msg = "";
 
-// --- HANDLE REGISTRATION ---
+// HANDLE NEW ADMIN REGISTRATION :
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $new_user = trim($_POST['new_username']);
     $new_email = trim($_POST['new_email']);
@@ -19,17 +18,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if (!empty($new_user) && !empty($new_email) && !empty($new_pass)) {
         try {
-            // Check if email already exists in admins
+            // CHECK IF THE EMAIL ALREADY EXISTS
             $check = $pdo->prepare("SELECT id FROM admin WHERE email = ?");
             $check->execute([$new_email]);
             
             if ($check->rowCount() > 0) {
                 $admin_msg = "<div class='p-3 bg-red-900/50 border border-red-500 text-red-200 rounded'>Error: Admin email already exists!</div>";
             } else {
-                // Hash the password
+                // HASH THE PASSWORD
                 $hashed_password = password_hash($new_pass, PASSWORD_DEFAULT);
                 
-                // Insert into ADMINS table
+                // INSERT THE NEW ADMIN INTO DATABASE (prepared statement to prevent SQL injection)
                 $stmt = $pdo->prepare("INSERT INTO admin (username, email, password) VALUES (?, ?, ?)");
                 $stmt->execute([$new_user, $new_email, $hashed_password]);
                 
@@ -52,6 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <title>Register Admin</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
+        /* GRADIENT BACKGROUND ANIMATION */
         @keyframes admin-gradient {
             0% { background-position: 0% 50%; }
             50% { background-position: 100% 50%; }
@@ -63,7 +63,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             animation: admin-gradient 15s ease infinite;
         }
         
-        /* Floating Card Animation */
+        /* FLOATING CARD ANIMATION */
         @keyframes float {
             0% { transform: translateY(0px); box-shadow: 0 5px 15px 0px rgba(0,0,0,0.5); }
             50% { transform: translateY(-10px); box-shadow: 0 25px 15px 0px rgba(0,0,0,0.2); }

@@ -2,17 +2,25 @@
 session_start();
 require 'db.php';
 
-// 1. Security: Check if user is logged in
+// 1. Security Check if user is logged in or tidak
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
 }
 
-// 2. Get User Info
+// 2. Get Role Info, samaada user or admin
 $username = htmlspecialchars($_SESSION['username']);
 $role = $_SESSION['role'];
 
-// --- HANDLE COMMENT SUBMISSION ---
+// CSRF token for admin actions
+if (!isset($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrf = $_SESSION['csrf_token'];
+
+
+
+// COMMENT SUBMISSION :
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_comment'])) {
     $comment_text = trim($_POST['comment_text']);
     
@@ -28,7 +36,34 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['submit_comment'])) {
     }
 }
 
-// --- FETCH ALL COMMENTS ---
+// COMMENT DELETION (utk admin only) :
+if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['delete_comment'])) {
+    // Only admins can delete comments
+    if ($role !== 'admin') {
+        header("Location: dashboard.php");
+        exit;
+    }
+
+    $comment_id = $_POST['comment_id'] ?? '';
+    $token = $_POST['csrf_token'] ?? '';
+
+    if (!hash_equals($_SESSION['csrf_token'], $token)) {
+        $error = 'Invalid request token.';
+    } else {
+        if (ctype_digit((string)$comment_id)) {
+            try {
+                $stmt = $pdo->prepare("DELETE FROM comment WHERE id = ?");
+                $stmt->execute([$comment_id]);
+            } catch (PDOException $e) {
+                $error = "Error deleting comment: " . $e->getMessage();
+            }
+        }
+        header("Location: dashboard.php");
+        exit;
+    }
+}
+
+// FETCH AND DISPLAY COMMENTS :
 try {
     $stmt = $pdo->query("SELECT * FROM comment ORDER BY time DESC");
     $comments = $stmt->fetchAll();
@@ -36,6 +71,8 @@ try {
     $comments = [];
 }
 ?>
+
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -74,6 +111,7 @@ try {
 
 <body class="<?php echo ($role === 'admin') ? 'animated-admin text-gray-100' : 'animated-user text-gray-900'; ?> min-h-screen">
 
+    <!-- HEADER -->
     <nav class="<?php echo ($role === 'admin') ? 'bg-black/80' : 'bg-white/90'; ?> backdrop-blur-sm shadow-md transition-colors">
         <div class="container px-6 py-4 mx-auto">
             <div class="flex items-center justify-between">
@@ -96,7 +134,7 @@ try {
     </nav>
 
     <div class="container p-6 mx-auto mt-10 space-y-8">
-        
+        <!-- SECTION OVERVIEW (admin) -->
         <?php if ($role === 'admin'): ?>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                 
@@ -120,7 +158,7 @@ try {
                 </div>
             </div>
         <?php endif; ?>
-
+        <!-- SECTION OVERVIEW (user) -->
         <?php if ($role === 'user'): ?>
             <div class="p-8 bg-white/95 backdrop-blur rounded-lg shadow-md">
                 <h1 class="text-3xl font-bold text-gray-900">My Profile</h1>
@@ -128,6 +166,8 @@ try {
             </div>
         <?php endif; ?>
 
+
+        <!-- COMMENT SECTION -->
         <div class="p-8 rounded-lg shadow-md <?php echo ($role === 'admin') ? 'bg-gray-900/80 backdrop-blur border border-red-900' : 'bg-white/95 backdrop-blur'; ?>">
             <h2 class="text-3xl font-bold <?php echo ($role === 'admin') ? 'text-white' : 'text-gray-900'; ?>">Discussion Room</h2>
             <h3 class="text-sm mt-3 mb-7 <?php echo ($role === 'admin') ? 'text-gray-300' : 'text-gray-900'; ?>"> This is the place and platform that you can communicate with others in the world ! (its not)</h3>
@@ -149,6 +189,8 @@ try {
                 </button>
             </form>
 
+            
+            <!-- COMMENT DISPLAY -->
             <div class="mt-8 space-y-4">
                 <?php if (count($comments) > 0): ?>
                     <?php foreach ($comments as $c): ?>
@@ -162,9 +204,19 @@ try {
                                         <?php echo ucfirst($c['role']); ?>
                                     </span>
                                 </div>
-                                <span class="text-sm <?php echo ($role === 'admin') ? 'text-gray-400' : 'text-gray-500'; ?>">
-                                    <?php echo date('M d, Y h:i A', strtotime($c['time'])); ?>
-                                </span>
+                                <div class="flex items-center space-x-2">
+                                    <span class="text-sm <?php echo ($role === 'admin') ? 'text-gray-400' : 'text-gray-500'; ?>">
+                                        <?php echo date('M d, Y h:i A', strtotime($c['time'])); ?>
+                                    </span>
+
+                                    <?php if ($role === 'admin'): ?>
+                                        <form method="POST" onsubmit="return confirm('Delete this comment?');" class="inline-block ml-3">
+                                            <input type="hidden" name="comment_id" value="<?php echo (int)$c['id']; ?>">
+                                            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars($csrf); ?>">
+                                            <button type="submit" name="delete_comment" class="px-2 py-1 text-xs bg-red-700 text-white rounded shadow-lg shadow-red-800/60 hover:bg-red-800">Delete</button>
+                                        </form>
+                                    <?php endif; ?>
+                                </div>
                             </div>
                             <p class="<?php echo ($role === 'admin') ? 'text-gray-300' : 'text-gray-800'; ?>">
                                 <?php echo nl2br(htmlspecialchars($c['comment'])); ?>
